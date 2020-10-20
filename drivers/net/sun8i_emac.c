@@ -56,9 +56,11 @@
 #define RX_TOTAL_BUFSIZE	(CONFIG_ETH_BUFSIZE * CONFIG_RX_DESCR_NUM)
 
 #define H3_EPHY_DEFAULT_VALUE	0x58000
+#define V3S_EPHY_DEFAULT_VALUE	0x38000
 #define H3_EPHY_DEFAULT_MASK	GENMASK(31, 15)
 #define H3_EPHY_ADDR_SHIFT	20
 #define REG_PHY_ADDR_MASK	GENMASK(4, 0)
+#define H3_EPHY_CLK_SEL		BIT(18) /* 1: 24MHz, 0: 25MHz */
 #define H3_EPHY_LED_POL		BIT(17)	/* 1: active low, 0: active high */
 #define H3_EPHY_SHUTDOWN	BIT(16)	/* 1: shutdown, 0: power up */
 #define H3_EPHY_SELECT		BIT(15) /* 1: internal PHY, 0: external PHY */
@@ -112,6 +114,7 @@ enum emac_variant {
 	A64_EMAC,
 	R40_GMAC,
 	H6_EMAC,
+	V3S_EMAC,
 };
 
 struct emac_dma_desc {
@@ -279,10 +282,11 @@ static int sun8i_emac_set_syscon_ephy(struct emac_eth_dev *priv, u32 *reg)
 		 * needs to be configured and powered up before use
 		*/
 		*reg &= ~H3_EPHY_DEFAULT_MASK;
-		*reg |=  H3_EPHY_DEFAULT_VALUE;
+		*reg |= ((priv->variant == V3S_EMAC) ? V3S_EPHY_DEFAULT_VALUE :  H3_EPHY_DEFAULT_VALUE);
 		*reg |= priv->phyaddr << H3_EPHY_ADDR_SHIFT;
 		*reg &= ~H3_EPHY_SHUTDOWN;
 		*reg |= H3_EPHY_SELECT;
+		*reg |= H3_EPHY_CLK_SEL;
 	} else
 		/* This is to select External Gigabit PHY on
 		 * the boards with H3 SoC.
@@ -311,7 +315,7 @@ static int sun8i_emac_set_syscon(struct sun8i_eth_pdata *pdata,
 
 	reg = readl(priv->sysctl_reg + 0x30);
 
-	if (priv->variant == H3_EMAC || priv->variant == H6_EMAC) {
+	if (priv->variant == H3_EMAC || priv->variant == H6_EMAC || priv->variant == V3S_EMAC) {
 		ret = sun8i_emac_set_syscon_ephy(priv, &reg);
 		if (ret)
 			return ret;
@@ -320,7 +324,8 @@ static int sun8i_emac_set_syscon(struct sun8i_eth_pdata *pdata,
 	reg &= ~(SC_ETCS_MASK | SC_EPIT);
 	if (priv->variant == H3_EMAC ||
 	    priv->variant == A64_EMAC ||
-	    priv->variant == H6_EMAC)
+	    priv->variant == H6_EMAC ||
+	    priv->variant == V3S_EMAC)
 		reg &= ~SC_RMII_EN;
 
 	switch (priv->interface) {
@@ -985,7 +990,7 @@ static int sun8i_emac_eth_ofdata_to_platdata(struct udevice *dev)
 		return -EINVAL;
 	}
 
-	if (priv->variant == H3_EMAC) {
+	if (priv->variant == H3_EMAC || priv->variant == V3S_EMAC) {
 		ret = sun8i_get_ephy_nodes(priv);
 		if (ret)
 			return ret;
@@ -1038,6 +1043,8 @@ static const struct udevice_id sun8i_emac_eth_ids[] = {
 		.data = (uintptr_t)R40_GMAC },
 	{.compatible = "allwinner,sun50i-h6-emac",
 		.data = (uintptr_t)H6_EMAC },
+	{.compatible = "allwinner,sun8i-v3s-emac",
+		.data = (uintptr_t)V3S_EMAC },
 	{ }
 };
 
