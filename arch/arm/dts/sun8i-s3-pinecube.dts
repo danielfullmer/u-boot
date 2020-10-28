@@ -13,7 +13,9 @@
 	compatible = "pine64,pinecube", "allwinner,sun8i-s3";
 
 	aliases {
+		ethernet0 = &emac;
 		serial0 = &uart2;
+		spi0 = &spi0;
 	};
 
 	chosen {
@@ -214,7 +216,7 @@
 	flash@0 {
 		#address-cells = <1>;
 		#size-cells = <1>;
-		compatible = "winbond,w25q128", "jedec,spi-nor";
+		compatible = "xtx,xt25f128b", "jedec,spi-nor";
 		reg = <0>;
 		spi-max-frequency = <40000000>;
 	};
